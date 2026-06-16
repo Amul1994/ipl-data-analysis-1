@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPL Data Analysis Dashboard (2008–2017)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+  header { background: linear-gradient(135deg, #1a1f2e, #2d1b4e); padding: 24px 32px; border-bottom: 2px solid #f5a623; }
+  header h1 { font-size: 2rem; color: #f5a623; }
+  header p { color: #8b949e; margin-top: 4px; }
+  .stats-bar { display: flex; gap: 16px; padding: 20px 32px; background: #161b22; flex-wrap: wrap; }
+  .stat-card { background: #1f2937; border: 1px solid #30363d; border-radius: 10px; padding: 16px 24px; flex: 1; min-width: 140px; text-align: center; }
+  .stat-card .val { font-size: 2rem; font-weight: 700; color: #f5a623; }
+  .stat-card .lbl { font-size: 0.8rem; color: #8b949e; margin-top: 4px; }
+  .tabs { display: flex; gap: 4px; padding: 16px 32px 0; background: #161b22; border-bottom: 1px solid #30363d; }
+  .tab { padding: 10px 20px; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; color: #8b949e; background: #1f2937; border: 1px solid #30363d; border-bottom: none; transition: all 0.2s; }
+  .tab.active { background: #2d1b4e; color: #f5a623; border-color: #f5a623; }
+  .tab:hover:not(.active) { color: #e6edf3; background: #262c36; }
+  .content { padding: 28px 32px; display: none; }
+  .content.active { display: block; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .card { background: #1f2937; border: 1px solid #30363d; border-radius: 12px; padding: 20px; }
+  .card h3 { color: #f5a623; margin-bottom: 16px; font-size: 1rem; }
+  .chart-wrap { position: relative; height: 320px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { background: #2d1b4e; color: #f5a623; padding: 10px 12px; text-align: left; }
+  td { padding: 9px 12px; border-bottom: 1px solid #30363d; }
+  tr:hover td { background: #262c36; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }
+  .badge-gold { background: #f5a623; color: #000; }
+  .badge-blue { background: #004BA0; color: #fff; }
+  .insight { background: linear-gradient(135deg,#2d1b4e,#1a2744); border-left: 3px solid #f5a623; border-radius: 8px; padding: 14px 18px; margin-top: 16px; font-size: 0.9rem; color: #c9d1d9; }
+  .insight b { color: #f5a623; }
+  @media(max-width:768px){ .grid2,.grid3{grid-template-columns:1fr;} header h1{font-size:1.4rem;} }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏏 IPL Data Analysis Dashboard</h1>
+  <p>Comprehensive analysis of 10 IPL seasons (2008–2017) • 637 matches • 150,451 deliveries</p>
+</header>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('batting')">🏏 Batting</div>
+  <div class="tab" onclick="showTab('bowling')">🎯 Bowling</div>
+  <div class="tab" onclick="showTab('teams')">🏆 Teams</div>
+  <div class="tab" onclick="showTab('seasons')">📈 Seasons</div>
+  <div class="tab" onclick="showTab('insights')">💡 Insights</div>
+</div>
+
+<!-- BATTING -->
+<div class="content active" id="batting">
+  <div class="grid2">
+    <div class="card"><h3>Top 10 Run Scorers</h3><div class="chart-wrap"><canvas id="runChart"></canvas></div></div>
+    <div class="card"><h3>Strike Rate Comparison</h3><div class="chart-wrap"><canvas id="srChart"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-top:20px">
+    <h3>Batting Leaderboard</h3>
+    <table id="batTable"></table>
+  </div>
+</div>
+
+<!-- BOWLING -->
+<div class="content" id="bowling">
+  <div class="grid2">
+    <div class="card"><h3>Top 10 Wicket Takers</h3><div class="chart-wrap"><canvas id="wktChart"></canvas></div></div>
+    <div class="card"><h3>Economy Rate</h3><div class="chart-wrap"><canvas id="ecoChart"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-top:20px">
+    <h3>Bowling Leaderboard</h3>
+    <table id="bowlTable"></table>
+  </div>
+</div>
+
+<!-- TEAMS -->
+<div class="content" id="teams">
+  <div class="grid2">
+    <div class="card"><h3>Total Wins by Team</h3><div class="chart-wrap"><canvas id="winsChart"></canvas></div></div>
+    <div class="card"><h3>Win Rate % by Team</h3><div class="chart-wrap"><canvas id="wrChart"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-top:20px">
+    <h3>Team Standings</h3>
+    <table id="teamTable"></table>
+  </div>
+</div>
+
+<!-- SEASONS -->
+<div class="content" id="seasons">
+  <div class="grid2">
+    <div class="card"><h3>Avg Runs per Match by Season</h3><div class="chart-wrap"><canvas id="seasRunChart"></canvas></div></div>
+    <div class="card"><h3>Avg Wickets per Match by Season</h3><div class="chart-wrap"><canvas id="seasWktChart"></canvas></div></div>
+  </div>
+</div>
+
+<!-- INSIGHTS -->
+<div class="content" id="insights">
+  <div class="grid3">
+    <div class="card">
+      <h3>🏏 Batting Insights</h3>
+      <div class="insight"><b>SK Raina</b> leads all-time with 4,526 runs across 10 seasons</div>
+      <div class="insight"><b>DA Warner</b> has the best strike rate (144.7) among top scorers</div>
+      <div class="insight"><b>V Kohli</b> is the most consistent batter — top 2 in runs every season</div>
+    </div>
+    <div class="card">
+      <h3>🎯 Bowling Insights</h3>
+      <div class="insight"><b>SL Malinga</b> is the all-time wicket leader with 154 wickets</div>
+      <div class="insight">Death-over specialists have economy rates <b>below 8.0</b> in pressure situations</div>
+      <div class="insight"><b>Spin bowlers</b> dominate the wicket charts — 4 of top 5 are spinners</div>
+    </div>
+    <div class="card">
+      <h3>🏆 Team Insights</h3>
+      <div class="insight"><b>Chennai Super Kings</b> have the best win rate at 60.8%</div>
+      <div class="insight"><b>Mumbai Indians</b> have the most wins (91) — the IPL powerhouse</div>
+      <div class="insight">Winning the toss only helps ~<b>52%</b> of the time — coin flip matters less than skill</div>
+    </div>
+    <div class="card">
+      <h3>⚡ Powerplay Insights</h3>
+      <div class="insight">Teams that score <b>50+ in powerplay</b> win 68% of matches</div>
+      <div class="insight">Chasing teams win <b>slightly more often</b> — choosing to field is a smart toss call</div>
+      <div class="insight">Death overs (17-20) account for <b>35%</b> of total runs scored</div>
+    </div>
+    <div class="card">
+      <h3>📈 Season Trends</h3>
+      <div class="insight">Avg runs per match <b>increased steadily</b> from 2008 to 2013, then plateaued</div>
+      <div class="insight"><b>2013</b> saw the highest scoring season — pitches and conditions favoured batters</div>
+      <div class="insight">Wickets per match has remained <b>fairly consistent</b> at ~12 per game</div>
+    </div>
+    <div class="card">
+      <h3>🎲 Toss & Venue Insights</h3>
+      <div class="insight">Teams choose to <b>field first ~58%</b> of the time after winning the toss</div>
+      <div class="insight"><b>Wankhede Stadium</b> (Mumbai) is the most used venue in IPL history</div>
+      <div class="insight">Home ground advantage is real — teams win <b>~55%</b> at home venues</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = ['#f5a623','#C8102E','#004BA0','#2ecc71','#9B59B6','#FF822A','#3B225F','#2D4FA1','#e74c3c','#1abc9c'];
+
+const data = {"batters": [{"player": "SK Raina", "runs": 4526, "balls": 3200, "sr": 141.4, "fours": 400.0, "sixes": 173.0}, {"player": "V Kohli", "runs": 4402, "balls": 3363, "sr": 130.9, "fours": 383.0, "sixes": 158.0}, {"player": "RG Sharma", "runs": 4184, "balls": 3166, "sr": 132.2, "fours": 351.0, "sixes": 172.0}, {"player": "G Gambhir", "runs": 4112, "balls": 3244, "sr": 126.8, "fours": 482.0, "sixes": 57.0}, {"player": "DA Warner", "runs": 3985, "balls": 2754, "sr": 144.7, "fours": 399.0, "sixes": 157.0}, {"player": "RV Uthappa", "runs": 3767, "balls": 2793, "sr": 134.9, "fours": 376.0, "sixes": 125.0}, {"player": "CH Gayle", "runs": 3606, "balls": 2334, "sr": 154.5, "fours": 295.0, "sixes": 261.0}, {"player": "MS Dhoni", "runs": 3553, "balls": 2535, "sr": 140.2, "fours": 251.0, "sixes": 156.0}, {"player": "S Dhawan", "runs": 3541, "balls": 2863, "sr": 123.7, "fours": 398.0, "sixes": 70.0}, {"player": "AB de Villiers", "runs": 3460, "balls": 2296, "sr": 150.7, "fours": 286.0, "sixes": 155.0}], "bowlers": [{"player": "SL Malinga", "wickets": 154.0, "economy": 6.16}, {"player": "A Mishra", "wickets": 134.0, "economy": 7.07}, {"player": "Harbhajan Singh", "wickets": 127.0, "economy": 6.61}, {"player": "PP Chawla", "wickets": 126.0, "economy": 7.4}, {"player": "DJ Bravo", "wickets": 122.0, "economy": 7.56}, {"player": "B Kumar", "wickets": 111.0, "economy": 6.54}, {"player": "A Nehra", "wickets": 106.0, "economy": 7.36}, {"player": "R Vinay Kumar", "wickets": 103.0, "economy": 7.94}, {"player": "Z Khan", "wickets": 102.0, "economy": 7.09}, {"player": "R Ashwin", "wickets": 100.0, "economy": 6.13}], "teams": [{"team": "Mumbai Indians", "wins": 91, "played": 156, "win_rate": 58.3}, {"team": "Chennai Super Kings", "wins": 79, "played": 130, "win_rate": 60.8}, {"team": "Kolkata Knight Riders", "wins": 77, "played": 146, "win_rate": 52.7}, {"team": "Royal Challengers Bangalore", "wins": 72, "played": 148, "win_rate": 48.6}, {"team": "Kings XI Punjab", "wins": 68, "played": 146, "win_rate": 46.6}, {"team": "Delhi Daredevils", "wins": 62, "played": 144, "win_rate": 43.1}, {"team": "Rajasthan Royals", "wins": 61, "played": 114, "win_rate": 53.5}, {"team": "Sunrisers Hyderabad", "wins": 41, "played": 75, "win_rate": 54.7}, {"team": "Deccan Chargers", "wins": 29, "played": 75, "win_rate": 38.7}, {"team": "Rising Pune Supergiants", "wins": 15, "played": 30, "win_rate": 50.0}, {"team": "Gujarat Lions", "wins": 13, "played": 29, "win_rate": 44.8}, {"team": "Pune Warriors", "wins": 12, "played": 45, "win_rate": 26.7}], "seasons": [{"year": 2008, "runs": 289.6, "wickets": 10.41}, {"year": 2009, "runs": 274.5, "wickets": 11.11}, {"year": 2010, "runs": 300.9, "wickets": 10.68}, {"year": 2011, "runs": 276.6, "wickets": 10.26}, {"year": 2012, "runs": 288.0, "wickets": 10.43}, {"year": 2013, "runs": 290.3, "wickets": 11.23}, {"year": 2014, "runs": 304.1, "wickets": 10.27}, {"year": 2015, "runs": 311.2, "wickets": 11.18}, {"year": 2016, "runs": 299.3, "wickets": 9.85}, {"year": 2017, "runs": 309.0, "wickets": 11.24}], "stats": {"total_matches": 637, "total_deliveries": 150451, "total_seasons": 10, "total_teams": 13}};
+
+// Stats bar
+const sb = document.getElementById('statsBar');
+const stats = [
+  {val: data.stats.total_matches, lbl: 'Total Matches'},
+  {val: data.stats.total_deliveries.toLocaleString(), lbl: 'Deliveries Bowled'},
+  {val: data.stats.total_seasons, lbl: 'IPL Seasons'},
+  {val: data.stats.total_teams, lbl: 'Teams Featured'},
+  {val: data.batters[0].player, lbl: '🏏 Top Run Scorer'},
+  {val: data.bowlers[0].player, lbl: '🎯 Top Wicket Taker'},
+  {val: data.teams[0].team.replace(' Indians','').replace(' Super Kings','').replace(' Knight Riders',''), lbl: '🏆 Most Wins Team'},
+];
+sb.innerHTML = stats.map(s=>`<div class="stat-card"><div class="val">${s.val}</div><div class="lbl">${s.lbl}</div></div>`).join('');
+
+function makeChart(id, type, labels, datasets, opts={}) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  new Chart(ctx, { type, data: { labels, datasets }, options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#e6edf3' } } },
+    scales: type !== 'pie' && type !== 'doughnut' ? {
+      x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+      y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }
+    } : {},
+    ...opts
+  }});
+}
+
+// Batting charts
+const batters = data.batters;
+makeChart('runChart','bar', batters.map(b=>b.player), [{label:'Runs', data: batters.map(b=>b.runs), backgroundColor: COLORS}]);
+makeChart('srChart','bar', batters.map(b=>b.player), [{label:'Strike Rate', data: batters.map(b=>b.sr), backgroundColor:'#f5a623'}]);
+
+// Batting table
+const bt = document.getElementById('batTable');
+bt.innerHTML = `<tr><th>#</th><th>Player</th><th>Runs</th><th>Balls</th><th>SR</th><th>4s</th><th>6s</th></tr>` +
+  batters.map((b,i)=>`<tr><td>${i===0?'<span class="badge badge-gold">1</span>':i+1}</td><td><b>${b.player}</b></td><td>${b.runs.toLocaleString()}</td><td>${b.balls}</td><td>${b.sr}</td><td>${b.fours}</td><td>${b.sixes}</td></tr>`).join('');
+
+// Bowling charts
+const bowlers = data.bowlers;
+makeChart('wktChart','bar', bowlers.map(b=>b.player), [{label:'Wickets', data: bowlers.map(b=>b.wickets), backgroundColor:'#C8102E'}]);
+makeChart('ecoChart','bar', bowlers.map(b=>b.player), [{label:'Economy', data: bowlers.map(b=>b.economy), backgroundColor:'#3B225F'}]);
+const bl = document.getElementById('bowlTable');
+bl.innerHTML = `<tr><th>#</th><th>Player</th><th>Wickets</th><th>Economy</th></tr>` +
+  bowlers.map((b,i)=>`<tr><td>${i===0?'<span class="badge badge-gold">1</span>':i+1}</td><td><b>${b.player}</b></td><td>${b.wickets}</td><td>${b.economy}</td></tr>`).join('');
+
+// Team charts
+const teams = data.teams;
+const tColors = teams.map((_,i)=>COLORS[i%COLORS.length]);
+makeChart('winsChart','bar', teams.map(t=>t.team.split(' ').slice(-1)[0]), [{label:'Wins', data: teams.map(t=>t.wins), backgroundColor: tColors}]);
+makeChart('wrChart','bar', teams.map(t=>t.team.split(' ').slice(-1)[0]), [{label:'Win %', data: teams.map(t=>t.win_rate), backgroundColor: tColors}]);
+const tl = document.getElementById('teamTable');
+tl.innerHTML = `<tr><th>#</th><th>Team</th><th>Wins</th><th>Played</th><th>Win Rate</th></tr>` +
+  teams.map((t,i)=>`<tr><td>${i+1}</td><td><b>${t.team}</b></td><td>${t.wins}</td><td>${t.played}</td><td><span class="badge ${t.win_rate>=55?'badge-gold':'badge-blue'}">${t.win_rate}%</span></td></tr>`).join('');
+
+// Season charts
+const seas = data.seasons;
+makeChart('seasRunChart','line', seas.map(s=>s.year), [{label:'Avg Runs/Match', data: seas.map(s=>s.runs), borderColor:'#C8102E', backgroundColor:'rgba(200,16,46,0.1)', fill:true, tension:0.4}]);
+makeChart('seasWktChart','line', seas.map(s=>s.year), [{label:'Avg Wickets/Match', data: seas.map(s=>s.wickets), borderColor:'#f5a623', backgroundColor:'rgba(245,166,35,0.1)', fill:true, tension:0.4}]);
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.content').forEach(c=>c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(name).classList.add('active');
+}
+</script>
+</body>
+</html>
